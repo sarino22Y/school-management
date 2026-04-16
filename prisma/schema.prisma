@@ -1,0 +1,240 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String
+  firstName     String    @map("first_name")
+  lastName      String    @map("last_name")
+  phone         String?
+  role          UserRole
+  status        UserStatus @default(ACTIVE)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  lastLoginAt   DateTime? @map("last_login_at")
+  
+  teacher       Teacher?
+  createdGrades Grade[]   @relation("GradeCreator")
+  updatedGrades Grade[]   @relation("GradeUpdater")
+  auditLogs     AuditLog[]
+  closedPeriods Period[]  @relation("PeriodClosedBy")
+  
+  @@map("users")
+}
+
+model SchoolYear {
+  id          String           @id @default(uuid())
+  label       String
+  startDate   DateTime         @map("start_date") @db.Date
+  endDate     DateTime         @map("end_date") @db.Date
+  status      SchoolYearStatus @default(INACTIVE)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  
+  classes     Class[]
+  periods     Period[]
+  students    Student[]
+  grades      Grade[]
+  assignments TeacherAssignment[]
+  settings    SchoolSettings?
+  
+  @@map("school_years")
+}
+
+model Period {
+  id          String       @id @default(uuid())
+  label       String
+  schoolYearId String      @map("school_year_id")
+  startDate   DateTime     @map("start_date") @db.Date
+  endDate     DateTime     @map("end_date") @db.Date
+  status      PeriodStatus @default(DRAFT)
+  closedAt    DateTime?    @map("closed_at")
+  closedById  String?      @map("closed_by_id")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  
+  schoolYear  SchoolYear   @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  closedBy    User?        @relation("PeriodClosedBy", fields: [closedById], references: [id])
+  grades      Grade[]
+  auditLogs   AuditLog[]
+  
+  @@unique([schoolYearId, label])
+  @@map("periods")
+}
+
+model Class {
+  id           String     @id @default(uuid())
+  name         String
+  level        String
+  schoolYearId String     @map("school_year_id")
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  
+  schoolYear   SchoolYear @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  students     Student[]
+  assignments  TeacherAssignment[]
+  grades       Grade[]
+  
+  @@unique([schoolYearId, name])
+  @@map("classes")
+}
+
+model Subject {
+  id            String     @id @default(uuid())
+  name          String
+  code          String?
+  coefficient   Float?     @default(1)
+  status        UserStatus @default(ACTIVE)
+  createdAt     DateTime   @default(now()) @map("created_at")
+  
+  assignments   TeacherAssignment[]
+  grades        Grade[]
+  
+  @@map("subjects")
+}
+
+model Teacher {
+  id             String     @id @default(uuid())
+  userId         String     @unique @map("user_id")
+  matricule      String?
+  specialization String?
+  status         UserStatus @default(ACTIVE)
+  createdAt      DateTime   @default(now()) @map("created_at")
+  
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  assignments    TeacherAssignment[]
+  
+  @@map("teachers")
+}
+
+model TeacherAssignment {
+  id            String     @id @default(uuid())
+  teacherId     String     @map("teacher_id")
+  classId       String     @map("class_id")
+  subjectId     String     @map("subject_id")
+  schoolYearId  String     @map("school_year_id")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  
+  teacher       Teacher    @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  class         Class      @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject       Subject    @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  schoolYear    SchoolYear @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  grades        Grade[]
+  
+  @@unique([teacherId, classId, subjectId, schoolYearId])
+  @@map("teacher_assignments")
+}
+
+model Student {
+  id           String     @id @default(uuid())
+  internalId   String?    @map("internal_id")
+  firstName    String     @map("first_name")
+  lastName     String     @map("last_name")
+  sex          String?
+  birthDate    DateTime?  @map("birth_date") @db.Date
+  birthPlace   String?    @map("birth_place")
+  address      String?
+  parentPhone  String?    @map("parent_phone")
+  parentEmail  String?    @map("parent_email")
+  classId      String     @map("class_id")
+  schoolYearId String     @map("school_year_id")
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+  
+  class        Class      @relation(fields: [classId], references: [id], onDelete: Cascade)
+  schoolYear   SchoolYear @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  grades       Grade[]
+  
+  @@unique([firstName, lastName, birthDate])
+  @@map("students")
+}
+
+model Grade {
+  id                  String            @id @default(uuid())
+  studentId           String            @map("student_id")
+  classId             String            @map("class_id")
+  subjectId           String            @map("subject_id")
+  teacherAssignmentId String            @map("teacher_assignment_id")
+  periodId            String            @map("period_id")
+  schoolYearId        String            @map("school_year_id")
+  value               Float
+  evaluationType      String?           @map("evaluation_type")
+  comment             String?
+  createdAt           DateTime          @default(now()) @map("created_at")
+  updatedAt           DateTime          @updatedAt @map("updated_at")
+  createdById         String            @map("created_by_id")
+  updatedById         String            @map("updated_by_id")
+  
+  student             Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class               Class             @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject             Subject           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacherAssignment   TeacherAssignment @relation(fields: [teacherAssignmentId], references: [id])
+  period              Period            @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  schoolYear          SchoolYear        @relation(fields: [schoolYearId], references: [id], onDelete: Cascade)
+  createdBy           User              @relation("GradeCreator", fields: [createdById], references: [id])
+  updatedBy           User              @relation("GradeUpdater", fields: [updatedById], references: [id])
+  
+  @@map("grades")
+}
+
+model AuditLog {
+  id          String    @id @default(uuid())
+  action      String
+  entityType  String    @map("entity_type")
+  entityId    String?   @map("entity_id")
+  oldValue    Json?     @map("old_value")
+  newValue    Json?     @map("new_value")
+  userId      String    @map("user_id")
+  periodId    String?   @map("period_id")
+  ipAddress   String?   @map("ip_address")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  
+  user        User      @relation(fields: [userId], references: [id])
+  period      Period?   @relation(fields: [periodId], references: [id])
+  
+  @@map("audit_logs")
+}
+
+model SchoolSettings {
+  id                  String      @id @default(uuid())
+  schoolName          String      @map("school_name")
+  address             String?
+  phone               String?
+  email               String?
+  logoUrl             String?     @map("logo_url")
+  maxGrade            Float       @default(20) @map("max_grade")
+  decimalPlaces       Int         @default(2) @map("decimal_places")
+  roundingRule        String      @default("HALF_UP") @map("rounding_rule")
+  currentSchoolYearId String?     @unique @map("current_school_year_id")
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @updatedAt @map("updated_at")
+  
+  currentSchoolYear   SchoolYear? @relation(fields: [currentSchoolYearId], references: [id])
+  
+  @@map("school_settings")
+}
+
+enum UserRole {
+  ADMIN
+  TEACHER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum PeriodStatus {
+  DRAFT
+  CLOSED
+}
+
+enum SchoolYearStatus {
+  ACTIVE
+  INACTIVE
+}
