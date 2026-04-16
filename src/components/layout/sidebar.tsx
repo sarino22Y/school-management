@@ -19,27 +19,48 @@ import { Button } from "@/components/ui/button"
 import { signOut } from "next-auth/react"
 
 interface SidebarProps {
-  user: any
+  user: {
+    id: string
+    email: string
+    name: string
+    role: "ADMIN" | "TEACHER"
+    firstName: string
+    lastName: string
+  }
   mobile?: boolean
 }
 
+// Type pour les rôles
+type UserRole = "ADMIN" | "TEACHER"
+
+// Définition avec type explicite plus flexible
+interface NavItem {
+  name: string
+  href: string
+  icon: React.ElementType
+  roles: UserRole[]
+}
+
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["ADMIN", "TEACHER"] },
-  { name: "Élèves", href: "/students", icon: Users, roles: ["ADMIN", "TEACHER"] },
-  { name: "Notes", href: "/grades", icon: FileText, roles: ["ADMIN", "TEACHER"] },
-  { name: "Classes", href: "/classes", icon: School, roles: ["ADMIN"] },
-  { name: "Matières", href: "/subjects", icon: BookOpen, roles: ["ADMIN"] },
-  { name: "Enseignants", href: "/teachers", icon: GraduationCap, roles: ["ADMIN"] },
-  { name: "Périodes", href: "/periods", icon: Calendar, roles: ["ADMIN"] },
-  { name: "Paramètres", href: "/settings", icon: Settings, roles: ["ADMIN"] },
-]
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["ADMIN", "TEACHER"] as UserRole[] },
+    { name: "Élèves", href: "/students", icon: Users, roles: ["ADMIN", "TEACHER"] as UserRole[] },
+    { name: "Notes", href: "/grades", icon: FileText, roles: ["ADMIN", "TEACHER"] as UserRole[] },
+    { name: "Classes", href: "/classes", icon: School, roles: ["ADMIN"] as UserRole[] },
+    { name: "Matières", href: "/subjects", icon: BookOpen, roles: ["ADMIN"] as UserRole[] },
+    { name: "Enseignants", href: "/teachers", icon: GraduationCap, roles: ["ADMIN"] as UserRole[] },
+    { name: "Périodes", href: "/periods", icon: Calendar, roles: ["ADMIN"] as UserRole[] },
+    { name: "Paramètres", href: "/settings", icon: Settings, roles: ["ADMIN"] as UserRole[] },
+  ] as const
 
 export function Sidebar({ user, mobile }: SidebarProps) {
   const pathname = usePathname()
   const { role } = usePermissions()
 
+  // Correction : typage explicite du fallback
+  const currentRole: UserRole = role || "TEACHER"
+  
   const filteredNav = navigation.filter(item => 
-    item.roles.includes(role || "")
+    item.roles.includes(currentRole)
   )
 
   return (

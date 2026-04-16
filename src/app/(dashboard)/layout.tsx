@@ -1,7 +1,6 @@
-import { SessionProvider } from "@/components/providers/session-provider"
 import { DashboardLayout } from "@/components/layout/dashboard-layout"
-import { getServerSession } from "next-auth"
-import { authConfig } from "@/lib/auth"
+import { SessionProvider } from "@/components/providers/session-provider"
+import { auth } from "@/lib/auth"
 import { redirect } from "next/navigation"
 
 export default async function DashboardRootLayout({
@@ -9,7 +8,7 @@ export default async function DashboardRootLayout({
 }: {
   children: React.ReactNode
 }) {
-  const session = await getServerSession(authConfig)
+  const session = await auth()
   
   if (!session) {
     redirect("/login")

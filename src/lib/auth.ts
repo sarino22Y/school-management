@@ -1,10 +1,9 @@
 import { NextAuthConfig } from "next-auth"
+import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { compare } from "bcryptjs"
 import { prisma } from "./prisma"
 import { z } from "zod"
-import type { JWT } from "next-auth/jwt"
-import type { Session, User } from "next-auth"
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -12,7 +11,7 @@ const credentialsSchema = z.object({
 })
 
 // ============================================
-// TYPES ÉTENDUS - Syntaxe correcte pour v5
+// TYPES ÉTENDUS
 // ============================================
 
 declare module "next-auth" {
@@ -35,7 +34,6 @@ declare module "next-auth" {
   }
 }
 
-// JWT est maintenant dans @auth/core, pas next-auth/jwt
 declare module "@auth/core/jwt" {
   interface JWT {
     id: string
@@ -49,7 +47,7 @@ declare module "@auth/core/jwt" {
 // CONFIGURATION
 // ============================================
 
-export const authConfig: NextAuthConfig = {
+const authConfig: NextAuthConfig = {
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -99,7 +97,6 @@ export const authConfig: NextAuthConfig = {
     },
     
     async session({ session, token }) {
-      // Type guard pour éviter 'unknown'
       if (token && typeof token.id === 'string') {
         session.user.id = token.id
         session.user.role = token.role as "ADMIN" | "TEACHER"
@@ -127,7 +124,6 @@ export const authConfig: NextAuthConfig = {
         return Response.redirect(new URL("/login", nextUrl))
       }
 
-      // RBAC avec type guard
       const user = auth.user
       if (!user || typeof user.role !== 'string') {
         return Response.redirect(new URL("/login", nextUrl))
@@ -154,3 +150,9 @@ export const authConfig: NextAuthConfig = {
     maxAge: 8 * 60 * 60
   }
 }
+
+// ============================================
+// EXPORTS - Next-Auth v5
+// ============================================
+
+export const { handlers: { GET, POST }, auth, signIn, signOut } = NextAuth(authConfig)
